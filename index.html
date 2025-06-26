@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학교 타이머</title>
+    <meta http-equiv="Permissions-Policy" content="microphone=()">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .timer-container {
+            background: #fff;
+            padding: 2rem 3rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .timer-display {
+            font-size: 8rem;
+            font-weight: bold;
+            margin-bottom: 2.2rem;
+            color: #2d6cdf;
+            background: none;
+            border-radius: 0;
+            padding: 0;
+            transition: color 0.3s;
+        }
+        .timer-warning {
+            color: #e53935 !important;
+            background: none !important;
+        }
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        .controls input {
+            width: 3rem;
+            font-size: 1.2rem;
+            text-align: center;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 0.5rem;
+            color: #222;
+        }
+        button {
+            background: #2d6cdf;
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.7rem 1.5rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1a4e96;
+        }
+        .quick-btn-1 { background: #4caf50; }
+        .quick-btn-3 { background: #ff9800; }
+        .quick-btn-5 { background: #e91e63; }
+        .quick-btn-10 { background: #9c27b0; }
+        .quick-btn-1:hover { background: #388e3c; }
+        .quick-btn-3:hover { background: #f57c00; }
+        .quick-btn-5:hover { background: #ad1457; }
+        .quick-btn-10:hover { background: #6d1b7b; }
+        .label {
+            font-size: 1rem;
+            margin-right: 0.3rem;
+            color: #222;
+        }
+        #progress-bar-bg {
+            width: 100%;
+            height: 32px;
+            background: #e0e0e0;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1.8rem;
+            display: none;
+            cursor: pointer;
+        }
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: #2d6cdf;
+            transition: width 0.3s, background 0.3s;
+        }
+        .progress-warning {
+            background: #e53935 !important;
+        }
+        #youtube-link {
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 0.5rem;
+            color: #222;
+        }
+        #noise-container {
+            background: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 1.2rem 0.5rem 1.5rem 0.5rem;
+            margin-top: 2rem;
+        }
+        #noise-level {
+            color: #e91e63;
+        }
+        #noise-warning-text {
+            color: #e53935;
+        }
+    </style>
+</head>
+<body>
+    <div class="timer-container">
+        <div class="timer-display" id="timer">00:00</div>
+        <div id="progress-bar-bg" onclick="progressBarClick(event)">
+            <div id="progress-bar"></div>
+        </div>
+        <div class="controls">
+            <span class="label">분</span><input type="number" id="minutes" min="0" max="99" value="0">
+            <span class="label">초</span><input type="number" id="seconds" min="0" max="59" value="0">
+        </div>
+        <div class="controls" style="margin-bottom:0.5rem;">
+            <button type="button" class="quick-btn-1" onclick="setQuickTime(1)">1분</button>
+            <button type="button" class="quick-btn-3" onclick="setQuickTime(3)">3분</button>
+            <button type="button" class="quick-btn-5" onclick="setQuickTime(5)">5분</button>
+            <button type="button" class="quick-btn-10" onclick="setQuickTime(10)">10분</button>
+        </div>
+        <div class="controls">
+            <button onclick="startTimer()">시작</button>
+            <button onclick="pauseTimer()">일시정지</button>
+            <button onclick="resetTimer()">초기화</button>
+        </div>
+        <div style="margin-top:2.2rem;">
+            <label for="youtube-link" style="font-size:1rem;">배경음악 유튜브 링크: </label>
+            <input type="text" id="youtube-link" style="width:18rem; font-size:1.1rem;">
+            <button onclick="setYoutubeMusic()" style="margin-left:0.5rem;">재생</button>
+        </div>
+        <div id="youtube-player-container" style="margin-top:1rem; display:none;">
+            <iframe id="youtube-player" width="380" height="215" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    </div>
+    <audio id="alarm-sound" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1c7b.mp3"></audio>
+    <audio id="noise-warning" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3"></audio>
+    <audio id="tick-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3"></audio>
+    <div id="noise-container" style="margin-top:2rem; text-align:center;">
+        <div style="font-size:1.2rem; margin-bottom:0.5rem;">실시간 소음 측정</div>
+        <div style="margin-bottom:0.5rem;">
+            <label for="noise-limit" style="font-size:1rem;">소음 제한(dB): </label>
+            <input type="number" id="noise-limit" min="50" max="130" value="100" style="width:4rem; font-size:1.1rem; text-align:center;">
+        </div>
+        <div id="noise-level" style="font-size:2rem; color:#e91e63;">- dB</div>
+        <div id="noise-warning-text" style="color:#e91e63; font-weight:bold; display:none;">⚠️ 소음이 너무 큽니다!</div>
+        <button onclick="toggleNoiseMeasurement()" id="noise-btn" style="margin-top:0.7rem;">소음 측정 시작</button>
+    </div>
+    <script>
+        let timerInterval;
+        let remainingSeconds = 0;
+        let isPaused = false;
+        let totalSeconds = 0;
+
+        function setQuickTime(min) {
+            document.getElementById('minutes').value = min;
+            document.getElementById('seconds').value = 0;
+            resetTimer(false);
+        }
+
+        let tickPlaying = false;
+        function playTick() {
+            const tick = document.getElementById('tick-sound');
+            // 연속 재생을 위해 매번 새로 재생
+            tick.currentTime = 0;
+            tick.play();
+        }
+
+        function updateDisplay() {
+            const min = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+            const sec = String(remainingSeconds % 60).padStart(2, '0');
+            const timerElem = document.getElementById('timer');
+            timerElem.textContent = `${min}:${sec}`;
+            if (remainingSeconds > 0 && remainingSeconds <= 10) {
+                timerElem.classList.add('timer-warning');
+                playTick();
+            } else {
+                timerElem.classList.remove('timer-warning');
+            }
+            updateProgressBar();
+        }
+
+        function updateProgressBar() {
+            const barBg = document.getElementById('progress-bar-bg');
+            const bar = document.getElementById('progress-bar');
+            if (totalSeconds > 0) {
+                barBg.style.display = 'block';
+                let percent = 100 * (1 - remainingSeconds / totalSeconds);
+                if (percent > 100) percent = 100;
+                if (percent < 0) percent = 0;
+                bar.style.width = percent + '%';
+                // 10초 이하 남으면 빨간색
+                if (remainingSeconds > 0 && remainingSeconds <= 10) {
+                    bar.classList.add('progress-warning');
+                } else {
+                    bar.classList.remove('progress-warning');
+                }
+            } else {
+                barBg.style.display = 'none';
+                bar.style.width = '0%';
+                bar.classList.remove('progress-warning');
+            }
+        }
+
+        function startTimer() {
+            if (timerInterval) return;
+            if (!isPaused) {
+                const min = parseInt(document.getElementById('minutes').value, 10) || 0;
+                const sec = parseInt(document.getElementById('seconds').value, 10) || 0;
+                remainingSeconds = min * 60 + sec;
+                totalSeconds = remainingSeconds;
+            }
+            if (remainingSeconds <= 0) return;
+            isPaused = false;
+            updateDisplay();
+            timerInterval = setInterval(() => {
+                if (remainingSeconds > 0) {
+                    remainingSeconds--;
+                    updateDisplay();
+                } else {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    document.getElementById('alarm-sound').play();
+                    updateProgressBar();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                isPaused = true;
+            }
+        }
+
+        function resetTimer(resetInputs = true) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isPaused = false;
+            if (resetInputs) {
+                document.getElementById('minutes').value = 0;
+                document.getElementById('seconds').value = 0;
+            }
+            remainingSeconds = 0;
+            totalSeconds = 0;
+            updateDisplay();
+        }
+
+        // 초기화면 00:00
+        updateDisplay();
+
+        // 소음 측정 관련
+        let audioContext, analyser, microphone, javascriptNode;
+        let measuring = false;
+
+        function toggleNoiseMeasurement() {
+            if (!measuring) {
+                // 마이크 권한 안내
+                if (!window.localStorage.getItem('micPermissionHinted')) {
+                    alert('소음 측정을 위해 마이크 접근 권한이 필요합니다.\n\n"허용"을 눌러주세요!');
+                    window.localStorage.setItem('micPermissionHinted', '1');
+                }
+                startNoiseMeasurement();
+            } else {
+                stopNoiseMeasurement();
+            }
+        }
+
+        function startNoiseMeasurement() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('이 브라우저는 소음 측정을 지원하지 않습니다.');
+                return;
+            }
+            document.getElementById('noise-btn').textContent = '소음 측정 중지';
+            measuring = true;
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+
+                analyser.smoothingTimeConstant = 0.8;
+                analyser.fftSize = 1024;
+
+                microphone.connect(analyser);
+                analyser.connect(javascriptNode);
+                javascriptNode.connect(audioContext.destination);
+
+                javascriptNode.onaudioprocess = function() {
+                    let array = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteTimeDomainData(array);
+                    let sum = 0;
+                    for (let i = 0; i < array.length; i++) {
+                        let sample = (array[i] - 128) / 128;
+                        sum += sample * sample;
+                    }
+                    let rms = Math.sqrt(sum / array.length);
+                    // 대략적인 dB 계산 (정확하지 않음, 참고용)
+                    let db = Math.round(20 * Math.log10(rms) + 100);
+                    if (!isFinite(db) || db < 0) db = 0;
+                    document.getElementById('noise-level').textContent = db + ' dB';
+                    const limit = parseInt(document.getElementById('noise-limit').value, 10) || 100;
+                    if (db >= limit) {
+                        document.getElementById('noise-warning-text').style.display = 'block';
+                        document.getElementById('noise-warning').play();
+                    } else {
+                        document.getElementById('noise-warning-text').style.display = 'none';
+                    }
+                };
+            }).catch(function(err) {
+                alert('마이크 접근이 거부되었습니다.');
+                measuring = false;
+                document.getElementById('noise-btn').textContent = '소음 측정 시작';
+            });
+        }
+
+        function stopNoiseMeasurement() {
+            measuring = false;
+            document.getElementById('noise-btn').textContent = '소음 측정 시작';
+            document.getElementById('noise-level').textContent = '- dB';
+            document.getElementById('noise-warning-text').style.display = 'none';
+            if (microphone && microphone.mediaStream) {
+                microphone.mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        }
+
+        function progressBarClick(event) {
+            if (totalSeconds <= 0) return;
+            const barBg = document.getElementById('progress-bar-bg');
+            const rect = barBg.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = x / rect.width;
+            let newElapsed = Math.round(totalSeconds * percent);
+            let newRemaining = totalSeconds - newElapsed;
+            if (newRemaining < 0) newRemaining = 0;
+            if (newRemaining > totalSeconds) newRemaining = totalSeconds;
+            remainingSeconds = newRemaining;
+            updateDisplay();
+        }
+
+        function setYoutubeMusic() {
+            const url = document.getElementById('youtube-link').value.trim();
+            const playerContainer = document.getElementById('youtube-player-container');
+            const player = document.getElementById('youtube-player');
+            let videoId = '';
+            // 유튜브 링크에서 videoId 추출
+            try {
+                if (url.includes('youtube.com/watch?v=')) {
+                    videoId = url.split('v=')[1].split('&')[0];
+                } else if (url.includes('youtu.be/')) {
+                    videoId = url.split('youtu.be/')[1].split('?')[0];
+                }
+            } catch (e) {}
+            if (videoId) {
+                player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
+                playerContainer.style.display = 'block';
+            } else {
+                player.src = '';
+                playerContainer.style.display = 'none';
+                alert('올바른 유튜브 링크를 입력해 주세요.');
+            }
+        }
+    </script>
+</body>
+</html>
