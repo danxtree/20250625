@@ -69,10 +69,12 @@
         .quick-btn-3 { background: #ff9800; }
         .quick-btn-5 { background: #e91e63; }
         .quick-btn-10 { background: #9c27b0; }
+        .quick-btn-30 { background: #00bcd4; }
         .quick-btn-1:hover { background: #388e3c; }
         .quick-btn-3:hover { background: #f57c00; }
         .quick-btn-5:hover { background: #ad1457; }
         .quick-btn-10:hover { background: #6d1b7b; }
+        .quick-btn-30:hover { background: #0097a7; }
         .label {
             font-size: 1rem;
             margin-right: 0.3rem;
@@ -116,6 +118,63 @@
         #noise-warning-text {
             color: #e53935;
         }
+        #noise-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+        }
+        #noise-modal.closing {
+            opacity: 0;
+        }
+        .noise-modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 3rem;
+            border: 4px solid #e53935;
+            border-radius: 1.5rem;
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(229, 57, 53, 0.4);
+        }
+        .noise-modal-content h2 {
+            font-size: 2.5rem;
+            color: #e53935;
+            margin: 0 0 1rem 0;
+        }
+        .noise-modal-content p {
+            font-size: 1.5rem;
+            color: #222;
+            margin: 1rem 0;
+        }
+        .noise-modal-db {
+            font-size: 5rem;
+            font-weight: bold;
+            color: #e53935;
+            margin: 1.5rem 0;
+        }
+        .noise-close-btn {
+            background: #2d6cdf;
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            transition: background 0.2s;
+        }
+        .noise-close-btn:hover {
+            background: #1a4e96;
+        }
     </style>
 </head>
 <body>
@@ -133,6 +192,7 @@
             <button type="button" class="quick-btn-3" onclick="setQuickTime(3)">3분</button>
             <button type="button" class="quick-btn-5" onclick="setQuickTime(5)">5분</button>
             <button type="button" class="quick-btn-10" onclick="setQuickTime(10)">10분</button>
+            <button type="button" class="quick-btn-30" onclick="setQuickTime(30)">30분</button>
         </div>
         <div class="controls">
             <button onclick="startTimer()">시작</button>
@@ -145,7 +205,13 @@
             <button onclick="setYoutubeMusic()" style="margin-left:0.5rem;">재생</button>
         </div>
         <div id="youtube-player-container" style="margin-top:1rem; display:none;">
-            <iframe id="youtube-player" width="380" height="215" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+            <!-- YT player will be created in this div by the IFrame API -->
+            <div id="youtube-player" style="width:380px;height:215px;background:#000"></div>
+            <div id="youtube-controls" style="margin-top:8px; display:none; text-align:center;">
+                <button id="unmute-btn" style="padding:6px 10px; border-radius:6px; background:#2d6cdf; color:#fff; border:none; cursor:pointer;">소리 켜기</button>
+                <button id="stop-youtube-btn" style="padding:6px 10px; border-radius:6px; background:#e53935; color:#fff; border:none; cursor:pointer; margin-left:8px;">정지</button>
+            </div>
+            <div id="youtube-error" style="margin-top:8px; color:#e53935; display:none; text-align:center;"></div>
         </div>
     </div>
     <audio id="alarm-sound" src="https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa1c7b.mp3"></audio>
@@ -161,11 +227,32 @@
         <div id="noise-warning-text" style="color:#e91e63; font-weight:bold; display:none;">⚠️ 소음이 너무 큽니다!</div>
         <button onclick="toggleNoiseMeasurement()" id="noise-btn" style="margin-top:0.7rem;">소음 측정 시작</button>
     </div>
+    <div id="noise-modal">
+        <div class="noise-modal-content">
+            <h2>⚠️ 주의!</h2>
+            <p>소음이 너무 큽니다!</p>
+            <div class="noise-modal-db" id="modal-db-display">- dB</div>
+            <p>주변 소음을 줄여주세요.</p>
+            <button class="noise-close-btn" onclick="closeNoiseModal()">확인</button>
+        </div>
+    </div>
+    <!-- 선생님을 보세요 팝업 (타이머 종료 시 표시) -->
+    <div id="teacher-popup" style="display:none;position:fixed;left:0;top:0;width:100%;height:100%;z-index:10000;align-items:center;justify-content:center;">
+        <div style="background:rgba(0,0,0,0.75);width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+            <div id="teacher-popup-content" style="background:#fff;padding:2rem 2.5rem;border-radius:12px;max-width:90%;text-align:center;">
+                <div style="font-size:3rem;font-weight:800;color:#e91e63;margin-bottom:0.5rem;">선생님을 보세요</div>
+                <div style="font-size:1.5rem;color:#222;margin-bottom:1rem;">수업을 진행하는 선생님께 집중해 주세요.</div>
+                <button onclick="closeTeacherPopup()" style="padding:10px 16px;border-radius:8px;background:#2d6cdf;color:#fff;border:none;font-size:1rem;">확인</button>
+            </div>
+        </div>
+    </div>
     <script>
         let timerInterval;
         let remainingSeconds = 0;
         let isPaused = false;
         let totalSeconds = 0;
+        let noiseExceededStartTime = null;
+        let noiseModalShownForCurrentExceeding = false;
 
         function setQuickTime(min) {
             document.getElementById('minutes').value = min;
@@ -173,12 +260,57 @@
             resetTimer(false);
         }
 
-        let tickPlaying = false;
-        function playTick() {
-            const tick = document.getElementById('tick-sound');
-            // 연속 재생을 위해 매번 새로 재생
-            tick.currentTime = 0;
-            tick.play();
+        // '틱' 소리를 WebAudio로 생성: 더 긴(0.5초)와 더 강한 소리로 변경
+        let audioCtx = null;
+        function ensureAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioCtx;
+        }
+
+        function playTick(urgent = false) {
+            try {
+                const ctx = ensureAudioContext();
+                const now = ctx.currentTime;
+                if (urgent) {
+                    // urgent: 더 빠른 2펄스 패턴 (120ms -> 80ms 간격), 더 높은 주파수
+                    for (let i = 0; i < 2; i++) {
+                        const start = now + i * 0.08; // 80ms 간격
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.type = 'square';
+                        o.frequency.setValueAtTime(2000, start);
+                        g.gain.setValueAtTime(0.0001, start);
+                        // 매우 짧게 급격히 상승했다가 빠르게 감쇠
+                        g.gain.exponentialRampToValueAtTime(1.0, start + 0.005);
+                        g.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
+                        o.connect(g);
+                        g.connect(ctx.destination);
+                        o.start(start);
+                        o.stop(start + 0.20);
+                        o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (e) {} };
+                    }
+                } else {
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'square';
+                    o.frequency.setValueAtTime(1400, now);
+                    g.gain.setValueAtTime(0.0001, now);
+                    g.gain.exponentialRampToValueAtTime(0.8, now + 0.005);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start(now);
+                    o.stop(now + 0.52);
+                    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (e) {} };
+                }
+            } catch (e) {
+                const tick = document.getElementById('tick-sound');
+                if (tick) {
+                    try { tick.currentTime = 0; tick.play(); } catch (err) {}
+                }
+            }
         }
 
         function updateDisplay() {
@@ -188,7 +320,7 @@
             timerElem.textContent = `${min}:${sec}`;
             if (remainingSeconds > 0 && remainingSeconds <= 10) {
                 timerElem.classList.add('timer-warning');
-                playTick();
+                playTick(true);
             } else {
                 timerElem.classList.remove('timer-warning');
             }
@@ -233,10 +365,13 @@
                     remainingSeconds--;
                     updateDisplay();
                 } else {
-                    clearInterval(timerInterval);
-                    timerInterval = null;
-                    document.getElementById('alarm-sound').play();
-                    updateProgressBar();
+                            clearInterval(timerInterval);
+                            timerInterval = null;
+                            // 재생: 알람 사운드, 음성 안내 및 팝업
+                            try { document.getElementById('alarm-sound').play(); } catch (e) {}
+                            try { sayStop(); } catch (e) {}
+                            try { showTeacherPopup(); } catch (e) {}
+                            updateProgressBar();
                 }
             }, 1000);
         }
@@ -318,9 +453,21 @@
                     const limit = parseInt(document.getElementById('noise-limit').value, 10) || 100;
                     if (db >= limit) {
                         document.getElementById('noise-warning-text').style.display = 'block';
-                        document.getElementById('noise-warning').play();
+                        // 첫 번째로 제한값을 초과했을 때 시간 기록
+                        if (noiseExceededStartTime === null) {
+                            noiseExceededStartTime = Date.now();
+                        }
+                        // 5초 이상 제한값을 초과했을 때만 팝업 표시
+                        const exceededDuration = Date.now() - noiseExceededStartTime;
+                        if (exceededDuration >= 5000 && !noiseModalShownForCurrentExceeding) {
+                            document.getElementById('noise-warning').play();
+                            showNoiseModal(db);
+                            noiseModalShownForCurrentExceeding = true;
+                        }
                     } else {
                         document.getElementById('noise-warning-text').style.display = 'none';
+                        noiseExceededStartTime = null;
+                        noiseModalShownForCurrentExceeding = false;
                     }
                 };
             }).catch(function(err) {
@@ -335,6 +482,8 @@
             document.getElementById('noise-btn').textContent = '소음 측정 시작';
             document.getElementById('noise-level').textContent = '- dB';
             document.getElementById('noise-warning-text').style.display = 'none';
+            noiseExceededStartTime = null;
+            noiseModalShownForCurrentExceeding = false;
             if (microphone && microphone.mediaStream) {
                 microphone.mediaStream.getTracks().forEach(track => track.stop());
             }
@@ -357,12 +506,135 @@
             updateDisplay();
         }
 
+        function showNoiseModal(db) {
+            const modal = document.getElementById('noise-modal');
+            if (modal.style.display !== 'block') {
+                document.getElementById('modal-db-display').textContent = db + ' dB';
+                modal.style.display = 'block';
+                try { sayQuiet(); } catch (e) {}
+            }
+        }
+
+        function closeNoiseModal() {
+            const modal = document.getElementById('noise-modal');
+            modal.classList.add('closing');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('closing');
+            }, 300);
+        }
+
+        // 말하기 및 팝업: 타이머 종료 시 호출
+        function sayStop() {
+            try {
+                const utter = new SpeechSynthesisUtterance('이제 그만');
+                utter.lang = 'ko-KR';
+                // 약간 강하게 발화
+                utter.rate = 1.0;
+                utter.pitch = 1.0;
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                // 실패하면 알람 사운드를 추가로 재생
+                try { document.getElementById('alarm-sound').play(); } catch (err) {}
+            }
+        }
+
+        // 소음 경고용 음성 안내: 높은 톤으로 '조용조용!' 안내
+        function sayQuiet() {
+            try {
+                const utter = new SpeechSynthesisUtterance('조용조용!');
+                utter.lang = 'ko-KR';
+                // 천천히 그리고 더 강한 톤
+                utter.rate = 0.85;   // 느리게
+                utter.pitch = 0.9;   // 약간 낮고 강한 느낌
+                utter.volume = 1.0;  // 최대 음량
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                // 실패 시 낮고 길게 비프음으로 대체 (더 강한 느낌)
+                try {
+                    const ctx = ensureAudioContext();
+                    const now = ctx.currentTime;
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sine';
+                    // 낮은 주파수로 강하게 들리게 함
+                    o.frequency.setValueAtTime(700, now);
+                    g.gain.setValueAtTime(0.0001, now);
+                    g.gain.exponentialRampToValueAtTime(1.0, now + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                    o.connect(g); g.connect(ctx.destination);
+                    o.start(now); o.stop(now + 0.62);
+                    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (err) {} };
+                } catch (err) {}
+            }
+        }
+
+        function showTeacherPopup() {
+            // 화면 깜빡임(플래시) 효과 후 팝업 표시
+            const flash = document.createElement('div');
+            flash.style.position = 'fixed';
+            flash.style.left = '0';
+            flash.style.top = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.background = '#ffffff';
+            flash.style.zIndex = 20000;
+            flash.style.opacity = '1';
+            flash.style.transition = 'opacity 220ms ease-out';
+            document.body.appendChild(flash);
+            // 짧게 깜빡임
+            requestAnimationFrame(() => {
+                setTimeout(() => { flash.style.opacity = '0'; }, 20);
+            });
+            setTimeout(() => {
+                try { flash.remove(); } catch (e) { flash.parentNode && flash.parentNode.removeChild(flash); }
+                const popup = document.getElementById('teacher-popup');
+                if (popup) popup.style.display = 'flex';
+            }, 260);
+        }
+
+        function closeTeacherPopup() {
+            const popup = document.getElementById('teacher-popup');
+            if (popup) popup.style.display = 'none';
+        }
+
+        // YouTube IFrame API 및 플레이어 관련
+        let ytPlayer = null;
+        let currentYouTubeId = null;
+        let youTubeApiReady = (function() {
+            return new Promise((resolve) => {
+                if (window.YT && window.YT.Player) return resolve();
+                window.onYouTubeIframeAPIReady = function() { resolve(); };
+                const s = document.createElement('script');
+                s.src = 'https://www.youtube.com/iframe_api';
+                s.async = true;
+                document.head.appendChild(s);
+            });
+        })();
+
+        function onPlayerError(event) {
+            const code = event && event.data;
+            const errDiv = document.getElementById('youtube-error');
+            let msg = '동영상 재생 중 오류가 발생했습니다.';
+            if (code === 100) msg = '동영상을 찾을 수 없습니다(삭제되었거나 비공개일 수 있음).';
+            else if (code === 101 || code === 150 || code === 153) msg = '이 동영상은 이 웹사이트에서 재생하도록 허용되지 않습니다.';
+            // Provide a clear fallback button to open on YouTube (or nocookie) in a new tab
+            const ytWatch = `https://www.youtube.com/watch?v=${currentYouTubeId}`;
+            const ytNocookie = `https://www.youtube-nocookie.com/embed/${currentYouTubeId}`;
+            errDiv.innerHTML = `
+                <div style="font-weight:600;margin-bottom:6px;">${msg}</div>
+                <div style="margin-top:6px;"><a href="${ytWatch}" target="_blank" rel="noopener" style="display:inline-block;padding:8px 12px;background:#2d6cdf;color:#fff;border-radius:6px;text-decoration:none;margin-right:8px;">YouTube에서 열기</a>
+                <a href="${ytNocookie}" target="_blank" rel="noopener" style="display:inline-block;padding:8px 12px;background:#6c757d;color:#fff;border-radius:6px;text-decoration:none;">No-cookie로 열기</a></div>
+                `;
+            errDiv.style.display = 'block';
+            document.getElementById('youtube-controls').style.display = 'none';
+        }
+
         function setYoutubeMusic() {
             const url = document.getElementById('youtube-link').value.trim();
-            const playerContainer = document.getElementById('youtube-player-container');
-            const player = document.getElementById('youtube-player');
             let videoId = '';
-            // 유튜브 링크에서 videoId 추출
             try {
                 if (url.includes('youtube.com/watch?v=')) {
                     videoId = url.split('v=')[1].split('&')[0];
@@ -370,14 +642,60 @@
                     videoId = url.split('youtu.be/')[1].split('?')[0];
                 }
             } catch (e) {}
-            if (videoId) {
-                player.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
-                playerContainer.style.display = 'block';
-            } else {
-                player.src = '';
-                playerContainer.style.display = 'none';
+            if (!videoId) {
                 alert('올바른 유튜브 링크를 입력해 주세요.');
+                return;
             }
+            currentYouTubeId = videoId;
+            document.getElementById('youtube-error').style.display = 'none';
+            youTubeApiReady.then(() => {
+                const playerContainer = document.getElementById('youtube-player-container');
+                const controls = document.getElementById('youtube-controls');
+                playerContainer.style.display = 'block';
+                controls.style.display = 'block';
+
+                const unmuteBtn = document.getElementById('unmute-btn');
+                const stopBtn = document.getElementById('stop-youtube-btn');
+
+                if (!ytPlayer) {
+                    ytPlayer = new YT.Player('youtube-player', {
+                        height: '215',
+                        width: '380',
+                        videoId: videoId,
+                        playerVars: {
+                            autoplay: 1,
+                            mute: 1,
+                            controls: 1,
+                            modestbranding: 1,
+                            playsinline: 1,
+                            enablejsapi: 1,
+                            origin: location.origin
+                        },
+                        events: {
+                            onReady: function(e) { try { e.target.playVideo(); } catch (err) {} },
+                            onError: onPlayerError
+                        }
+                    });
+                } else {
+                    try { ytPlayer.loadVideoById(videoId); ytPlayer.mute(); ytPlayer.playVideo(); } catch (e) {}
+                }
+
+                unmuteBtn.onclick = function() {
+                    if (ytPlayer) { try { ytPlayer.unMute(); ytPlayer.playVideo(); } catch (e) {} }
+                    this.style.display = 'none';
+                };
+                stopBtn.onclick = function() {
+                    if (ytPlayer) { try { ytPlayer.stopVideo(); ytPlayer.destroy(); } catch (e) {} }
+                    ytPlayer = null;
+                    playerContainer.style.display = 'none';
+                    controls.style.display = 'none';
+                    document.getElementById('unmute-btn').style.display = 'inline-block';
+                };
+            }).catch(() => {
+                const errDiv = document.getElementById('youtube-error');
+                errDiv.innerHTML = `YouTube API 로드에 실패했습니다. <a href="https://youtu.be/${videoId}" target="_blank" rel="noopener">새 탭에서 열기</a>`;
+                errDiv.style.display = 'block';
+            });
         }
     </script>
 </body>
