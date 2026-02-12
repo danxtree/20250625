@@ -219,6 +219,7 @@
     <audio id="tick-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3"></audio>
     <div id="noise-container" style="margin-top:2rem; text-align:center;">
         <div style="font-size:1.2rem; margin-bottom:0.5rem;">실시간 소음 측정</div>
+        <div style="font-size:0.85rem; color:#999; margin-bottom:1rem;">5초 동안 소음이 계속되면 경고가 뜹니다</div>
         <div style="margin-bottom:0.5rem;">
             <label for="noise-limit" style="font-size:1rem;">소음 제한(dB): </label>
             <input type="number" id="noise-limit" min="50" max="130" value="100" style="width:4rem; font-size:1.1rem; text-align:center;">
@@ -233,6 +234,7 @@
             <p>소음이 너무 큽니다!</p>
             <div class="noise-modal-db" id="modal-db-display">- dB</div>
             <p>주변 소음을 줄여주세요.</p>
+            <div id="noise-countdown" style="font-size:2rem; color:#2d6cdf; font-weight:bold; margin:1rem 0; display:none;">3</div>
             <button class="noise-close-btn" onclick="closeNoiseModal()">확인</button>
         </div>
     </div>
@@ -253,6 +255,8 @@
         let totalSeconds = 0;
         let noiseExceededStartTime = null;
         let noiseModalShownForCurrentExceeding = false;
+        let noiseCountdownInterval = null;
+        let noiseCountdownSecond = 3;
 
         function setQuickTime(min) {
             document.getElementById('minutes').value = min;
@@ -468,6 +472,11 @@
                         document.getElementById('noise-warning-text').style.display = 'none';
                         noiseExceededStartTime = null;
                         noiseModalShownForCurrentExceeding = false;
+                        // 소음이 정상 수준으로 돌아오면 모달 닫기
+                        const modal = document.getElementById('noise-modal');
+                        if (modal.style.display === 'block') {
+                            closeNoiseModal();
+                        }
                     }
                 };
             }).catch(function(err) {
@@ -512,16 +521,49 @@
                 document.getElementById('modal-db-display').textContent = db + ' dB';
                 modal.style.display = 'block';
                 try { sayQuiet(); } catch (e) {}
+                // 카운트다운 시작
+                startNoiseCountdown();
             }
         }
 
         function closeNoiseModal() {
+            // 카운트다운 중지
+            if (noiseCountdownInterval) {
+                clearInterval(noiseCountdownInterval);
+                noiseCountdownInterval = null;
+            }
             const modal = document.getElementById('noise-modal');
+            const countdownElem = document.getElementById('noise-countdown');
+            countdownElem.style.display = 'none';
             modal.classList.add('closing');
             setTimeout(() => {
                 modal.style.display = 'none';
                 modal.classList.remove('closing');
+                // 팝업이 닫히면 플래그 초기화 및 타이머 초기화
+                noiseModalShownForCurrentExceeding = false;
+                noiseExceededStartTime = null;
             }, 300);
+        }
+
+        function startNoiseCountdown() {
+            noiseCountdownSecond = 3;
+            const countdownElem = document.getElementById('noise-countdown');
+            countdownElem.style.display = 'block';
+            countdownElem.textContent = noiseCountdownSecond;
+            
+            if (noiseCountdownInterval) {
+                clearInterval(noiseCountdownInterval);
+            }
+            
+            noiseCountdownInterval = setInterval(() => {
+                noiseCountdownSecond--;
+                countdownElem.textContent = noiseCountdownSecond;
+                if (noiseCountdownSecond <= 0) {
+                    clearInterval(noiseCountdownInterval);
+                    noiseCountdownInterval = null;
+                    closeNoiseModal();
+                }
+            }, 1000);
         }
 
         // 말하기 및 팝업: 타이머 종료 시 호출
